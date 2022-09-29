@@ -2,6 +2,7 @@
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use React\ChildProcess\Process;
 use React\EventLoop\Loop;
 use React\Http\Browser;
 use React\Promise\Promise;
@@ -13,6 +14,30 @@ class HttpServer
 
     public function __construct()
     {
+        $file = realpath(__DIR__ . '/../cli/http_worker.php');
+
+        for ($i = 1; $i <= 10; $i++)
+        {
+            $process = new Process('php ' . $file . ' ' . (6000 + $i));
+            $process->start();
+
+            $process->stdout->on('data', function ($chunk) {
+                echo $chunk . PHP_EOL;
+            });
+
+            $process->stdout->on('end', function () {
+                echo 'ended' . PHP_EOL;
+            });
+
+            $process->stdout->on('error', function (Exception $e) {
+                echo 'error: ' . $e->getMessage() . PHP_EOL;
+            });
+
+            $process->stdout->on('close', function () {
+                echo 'closed' . PHP_EOL;
+            });
+        }
+
         Loop::addPeriodicTimer(0.01, function () {
             $client = new Browser();
 
@@ -26,7 +51,7 @@ class HttpServer
             $batch_size = 0;
             foreach ($this->jobs as $job_id => $job) {
                 $batch_size++;
-                if ($batch_size > 300) {
+                if ($batch_size > 50) {
                     break;
                 }
 
@@ -37,10 +62,13 @@ class HttpServer
                 unset($this->job_promises[$job_id]);
             }
 
-            echo 'sending ' . count($jobs) . PHP_EOL;
+            $port = 6000;
+            $port = mt_rand(6001, 6010);
+
+            echo 'sending ' . count($jobs) . ' to port ' . $port . PHP_EOL;
 
             $client->post(
-                'http://127.0.0.1:8081',
+                'http://127.0.0.1:' . $port,
                 array(
                     'Content-Type' => 'application/json'
                 ),

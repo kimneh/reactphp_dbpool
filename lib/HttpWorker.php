@@ -67,7 +67,12 @@ class HttpWorker
             );
         });
 
-        $socket = new React\Socket\SocketServer('127.0.0.1:8081');
+        $port = 6000;
+        if (isset($GLOBALS['argv'][1])) {
+            $port = $GLOBALS['argv'][1];
+        }
+
+        $socket = new React\Socket\SocketServer('127.0.0.1:' . $port);
         $http->listen($socket);
     }
 }

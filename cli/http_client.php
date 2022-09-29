@@ -10,7 +10,7 @@ ini_set('memory_limit','256M');
 
 $client = new Browser();
 
-for ($i = 1; $i <= 100; $i++) {
+for ($i = 1; $i <= 500; $i++) {
     $client->post(
         'http://127.0.0.1:8080?action=insert_job',
         array(
