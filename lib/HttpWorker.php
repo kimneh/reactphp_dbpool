@@ -30,6 +30,8 @@ class HttpWorker
             $body = $request->getBody();
             $jobs = json_decode($body, true);
 
+            //var_dump($jobs);
+
             foreach ($jobs as $i => $job) {
                 $req = $job['req'];
                 $sql = $req['sql'];

@@ -9,46 +9,87 @@ use React\Promise\Promise;
 class HttpServer
 {
     private $jobs = [];
+    private $job_promises = [];
 
     public function __construct()
     {
+        Loop::addPeriodicTimer(0.01, function () {
+            $client = new Browser();
+
+            if (empty($this->jobs)) {
+                return;
+            }
+
+            $jobs = [];
+            $job_promises = [];
+
+            $batch_size = 0;
+            foreach ($this->jobs as $job_id => $job) {
+                $batch_size++;
+                if ($batch_size > 300) {
+                    break;
+                }
+
+                $jobs[$job_id] = $job;
+                $job_promises[$job_id] = $this->job_promises[$job_id];
+
+                unset($this->jobs[$job_id]);
+                unset($this->job_promises[$job_id]);
+            }
+
+            echo 'sending ' . count($jobs) . PHP_EOL;
+
+            $client->post(
+                'http://127.0.0.1:8081',
+                array(
+                    'Content-Type' => 'application/json'
+                ),
+                json_encode_unescape($jobs)
+            )->then(function (ResponseInterface $response) use (&$jobs, &$job_promises) {
+                $body = (string)$response->getBody();
+                $results = json_decode($body, true);
+                foreach ($results as $result) {
+                    $job_id = $result['job_id'];
+                    $resolve = $job_promises[$job_id];
+
+                    unset($jobs[$job_id]);
+                    unset($job_promises[$job_id]);
+
+                    $resolve(json_encode_unescape($result));
+                }
+
+                foreach ($jobs as $job_id => $job) {
+                    $resolve = $job_promises[$job_id];
+                    $resolve('not_found');
+                }
+
+            }, function (Exception $e) use (&$jobs, &$job_promises) {
+                $message = $e->getMessage();
+                echo $message . PHP_EOL;
+                foreach ($jobs as $job_id => $job) {
+                    $resolve = $job_promises[$job_id];
+                    $resolve($message);
+                }
+            });
+        });
+
         $http = new React\Http\HttpServer(function (ServerRequestInterface $request) {
             $params = $request->getQueryParams();
             $method = $request->getMethod();
             $body = $request->getBody();
 
             if ('insert_job' === $params['action']) {
-                $data = json_decode($body, true);
-                $sql = $data['sql'];
-                $binds = $data['binds'];
-                $job_id = $this->gen_id();
-                $this->jobs[$job_id] = ['req' => $data];
+                $promise = new Promise(function ($resolve, $reject) use ($body) {
+                    $data = json_decode($body, true);
+                    $sql = $data['sql'];
+                    $binds = $data['binds'];
+                    $job_id = $this->gen_id();
 
-                $promise = new Promise(function ($resolve, $reject) use ($body, $job_id) {
-                    Loop::addTimer(0.001, function () use ($resolve, $body, $job_id) {
-
-                        $client = new Browser();
-                        $client->post(
-                            'http://127.0.0.1:8081',
-                            array(
-                                'Content-Type' => 'application/json'
-                            ),
-                            json_encode_unescape([$this->jobs[$job_id]])
-                        )->then(function (ResponseInterface $response) use($resolve, $job_id) {
-                            $body = (string)$response->getBody();
-                            unset($this->jobs[$job_id]);
-                            echo 'count = ' . count($this->jobs) . PHP_EOL;
-                            $resolve($body);
-
-                        }, function (Exception $e) use($resolve, $job_id) {
-                            $message = $e->getMessage();
-                            echo $message . PHP_EOL;
-                            $body = [];
-                            unset($this->jobs[$job_id]);
-                            echo 'count = ' . count($this->jobs) . PHP_EOL;
-                            $resolve($message);
-                        });
-                    });
+                    $this->jobs[$job_id] = [
+                        'job_id' => $job_id,
+                        'req' => $data,
+                    ];
+                    $this->job_promises[$job_id] = $resolve;
                 });
 
                 return $promise->then(function ($body) {
@@ -71,11 +112,10 @@ class HttpServer
     private function gen_id()
     {
         $id = base_convert(time(), 10, 36) . '-';
-        for ($i = 0; $i < 10; $i++)
-        {
+        for ($i = 0; $i < 10; $i++) {
             $id .= base_convert(mt_rand(0, 35), 10, 36);
         }
-        echo 'id=' . $id . PHP_EOL;
+        //echo 'id=' . $id . PHP_EOL;
         return $id;
     }
 }
