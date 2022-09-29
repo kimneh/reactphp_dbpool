@@ -51,7 +51,7 @@ class HttpServer
             $batch_size = 0;
             foreach ($this->jobs as $job_id => $job) {
                 $batch_size++;
-                if ($batch_size > 50) {
+                if ($batch_size > 300) {
                     break;
                 }
 

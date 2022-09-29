@@ -11,6 +11,7 @@ require_once __DIR__ . '/ServerForRequest.php';
 require_once __DIR__ . '/RequestConnection.php';
 require_once __DIR__ . '/HttpServer.php';
 require_once __DIR__ . '/HttpWorker.php';
+require_once __DIR__ . '/DbConnection.php';
 
 function json_encode_unescape($data)
 {
@@ -39,4 +40,12 @@ function read_line($fp, $callback)
     }
 
     exit;
+}
+
+function truncate_table()
+{
+    $conn = DbConnection::connect();
+    $sql = 'truncate test_user';
+    $conn->query($sql);
+    return $conn;
 }

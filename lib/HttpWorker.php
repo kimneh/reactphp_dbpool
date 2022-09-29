@@ -9,28 +9,15 @@ class HttpWorker
 
     public function __construct()
     {
-        $host = '127.0.0.1';
-        $port = 5432;
-        $database = 'hpoint_db';
-        $username = 'hpoint_user';
-        $password = 'this_is_point_secret_2022';
-        $schema = 'hpoint_schema';
-
-        $dsn = 'pgsql:host=' . $host . ';port=' . $port . ';dbname=' . $database . ';';
-        $conn = new PDO($dsn, $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        if (!$conn) {
-            echo 'fail to connect to db' . PHP_EOL;
-            exit;
-        }
-        $conn->exec("set schema '" . $schema . "';");
-
-        $this->conn = $conn;
+        $this->conn = DbConnection::connect();
 
         $http = new React\Http\HttpServer(function (ServerRequestInterface $request) {
             $body = $request->getBody();
             $jobs = json_decode($body, true);
 
             //var_dump($jobs);
+
+            $this->conn->beginTransaction();
 
             foreach ($jobs as $i => $job) {
                 $req = $job['req'];
@@ -61,6 +48,8 @@ class HttpWorker
 
                 $jobs[$i]['res'] = $res;
             }
+
+            $this->conn->commit();
 
             return React\Http\Message\Response::plaintext(
                 json_encode_unescape($jobs) . PHP_EOL

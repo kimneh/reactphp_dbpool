@@ -8,7 +8,20 @@ require __DIR__ . '/../lib/inc.php';
 
 ini_set('memory_limit','256M');
 
+truncate_table();
+
 $client = new Browser();
+
+$GLOBALS['time'] = microtime(true);
+$GLOBALS['completed'] = 0;
+function on_complete()
+{
+    $GLOBALS['completed']++;
+    if ($GLOBALS['completed'] >= 500) {
+        $lapsed = round(microtime(true) - $GLOBALS['time'], 3);
+        echo 'lapsed = ' . $lapsed . PHP_EOL;
+    }
+}
 
 for ($i = 1; $i <= 500; $i++) {
     $client->post(
@@ -20,10 +33,12 @@ for ($i = 1; $i <= 500; $i++) {
             'sql' => 'insert into test_user (id, name, age) values (:id, :name, :age)',
             'binds' => ['name' => 'kim', 'id' => $i, 'age' => mt_rand(1, 100)],
         ])
-    )->then(function (ResponseInterface $response) {
-        echo (string)$response->getBody();
+    )->then(function (ResponseInterface $response)  {
+        //echo (string)$response->getBody();
+        on_complete();
     }, function (Exception $e) {
         echo 'Error: ' . $e->getMessage() . PHP_EOL;
+        on_complete();
     });
 }
 
