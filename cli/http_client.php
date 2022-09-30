@@ -8,7 +8,7 @@ require __DIR__ . '/../lib/inc.php';
 
 ini_set('memory_limit','256M');
 
-truncate_table();
+//truncate_table();
 
 $client = new Browser();
 
@@ -23,7 +23,8 @@ function on_complete()
     }
 }
 
-for ($i = 1; $i <= 500; $i++) {
+for ($i = 1; $i <= 1500; $i++) {
+    $id = random_id();
     $client->post(
         'http://127.0.0.1:8080?action=insert_job',
         array(
@@ -31,7 +32,7 @@ for ($i = 1; $i <= 500; $i++) {
         ),
         json_encode_unescape([
             'sql' => 'insert into test_user (id, name, age) values (:id, :name, :age)',
-            'binds' => ['name' => 'kim', 'id' => $i, 'age' => mt_rand(1, 100)],
+            'binds' => ['name' => 'kim', 'id' => $id, 'age' => mt_rand(1, 100)],
         ])
     )->then(function (ResponseInterface $response)  {
         //echo (string)$response->getBody();

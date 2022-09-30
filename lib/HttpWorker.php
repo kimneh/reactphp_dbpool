@@ -19,34 +19,60 @@ class HttpWorker
 
             $this->conn->beginTransaction();
 
-            foreach ($jobs as $i => $job) {
-                $req = $job['req'];
-                $sql = $req['sql'];
-                $binds = $req['binds'];
-                $res = [];
+            if (0) {
+                foreach ($jobs as $i => $job) {
+                    $req = $job['req'];
+                    $sql = $req['sql'];
+                    $binds = $req['binds'];
+                    $res = [];
 
-                if (!isset($this->sqls[$sql])) {
-                    $this->sqls[$sql] = $this->conn->prepare($sql);
+                    if (!isset($this->sqls[$sql])) {
+                        $this->sqls[$sql] = $this->conn->prepare($sql);
+                    }
+
+                    $sth = $this->sqls[$sql];
+
+                    try {
+                        $sth->execute($binds);
+                        $affected_rows = $sth->rowCount();
+
+                        if (0) {
+                            $rows = $sth->fetchAll(PDO::FETCH_ASSOC);
+                            $res['rows'] = $rows;
+                        }
+
+                        $res['affected_rows'] = $affected_rows;
+                    } catch (Exception $e) {
+                        $res['exception']['code'] = $e->getCode();
+                        $res['exception']['message'] = $e->getMessage();
+                    } catch (Error $e) {
+                        $res['error']['code'] = $e->getCode();
+                        $res['error']['message'] = $e->getMessage();
+                    }
+
+                    $jobs[$i]['res'] = $res;
+                }
+            } else {
+                $sqls = [];
+                foreach ($jobs as $i => $job) {
+                    $req = $job['req'];
+                    $sql = $req['sql'];
+                    $binds = $req['binds'];
+                    $sql = prepare_sql($this->conn, $sql, $binds);
+                    $sqls[] = $sql;
+
+                    $jobs[$i]['res'] = $sql;
                 }
 
-                $sth = $this->sqls[$sql];
-
+                $str = implode(';', $sqls) . ';';
+                //$str .= "insert into test_user (id, name, age) values ('1', 'kim', '65');";
+                //echo $str;
                 try {
-                    $sth->execute($binds);
-                    $affected_rows = $sth->rowCount();
-
-                    $rows = $sth->fetchAll(PDO::FETCH_ASSOC);
-                    $res['rows'] = $rows;
-                    $res['affected_rows'] = $affected_rows;
-                } catch (Exception $e) {
-                    $res['exception']['code'] = $e->getCode();
-                    $res['exception']['message'] = $e->getMessage();
-                } catch (Error $e) {
-                    $res['error']['code'] = $e->getCode();
-                    $res['error']['message'] = $e->getMessage();
+                    $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, 1);
+                    $this->conn->query($str);
+                }catch (Exception $e) {
+                    echo $e->getMessage() . PHP_EOL;
                 }
-
-                $jobs[$i]['res'] = $res;
             }
 
             $this->conn->commit();

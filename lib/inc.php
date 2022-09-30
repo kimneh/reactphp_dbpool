@@ -49,3 +49,18 @@ function truncate_table()
     $conn->query($sql);
     return $conn;
 }
+
+function random_id()
+{
+    return mt_rand(1000 * 1000 * 1000, 9000 * 1000 * 1000);
+}
+
+function prepare_sql(PDO $pdo, $sql, $binds)
+{
+    foreach ($binds as $name => $value)
+    {
+        $sql = str_replace(':' . $name, $pdo->quote($value), $sql);
+    }
+
+    return $sql;
+}
