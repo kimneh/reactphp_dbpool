@@ -23,7 +23,7 @@ function on_complete()
     }
 }
 
-for ($i = 1; $i <= 1500; $i++) {
+for ($i = 1; $i <= 500; $i++) {
     $id = random_id();
     $client->post(
         'http://127.0.0.1:8080?action=insert_job',
